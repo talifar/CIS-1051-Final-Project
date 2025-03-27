@@ -24,4 +24,5 @@
 
 ## Do you have any questions of your own?
 
-# I am not sure how complicated my ideas are or what level of skill I need to complete them, so I am not sure which is reasonable to do.
+# I am not sure how complicated my ideas are or what level of skill I need to complete them.
+# Studying for medical exams currently combined with heavy classload, so not sure which is reasonable to do.
