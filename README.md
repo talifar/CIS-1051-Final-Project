@@ -33,6 +33,7 @@ I also learned how to structure a clean and readable Quarto project, how to thin
 
 The final deliverables include a Quarto source file, an HTML output file, a README file, and a video walkthrough.  
 The video has been submitted directly to Canvas as it was to0 large a file to be uploaded to GitHub.
+Also uploaded a pdf file of the rendered Quarto source code as GitHub only shows raw HTML code. This product was shown in video walkthrough, but I am uploading in case anyone wants to take a closer look.
 
 
 
