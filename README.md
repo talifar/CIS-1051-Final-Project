@@ -36,5 +36,5 @@ The video has been submitted directly to Canvas as it was to0 large a file to be
 Also uploaded a pdf file of the rendered Quarto source code as GitHub only shows raw HTML code. This product was shown in video walkthrough, but I am uploading in case anyone wants
 to take a closer look.
 
-
+**Additional Note:** I am planning to continue developing this project beyond the course. As someone interested in cardiology and preparing to apply to medical school, this topic holds personal and professional importance for me. I hope to expand the analysis over time to explore more factors affecting cardiovascular health.
 
