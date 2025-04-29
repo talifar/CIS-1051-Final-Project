@@ -31,7 +31,8 @@ I also learned how to structure a clean and readable Quarto project, how to thin
 
 **Final Product**:
 
-The final deliverables include a Quarto source file, an HTML output file, a README file, and a video walkthrough.
-All of these have been submitted both to Canvas and uploaded to the GitHub repository.
+The final deliverables include a Quarto source file, an HTML output file, a README file, and a video walkthrough.  
+The video has been submitted directly to Canvas as it was to large a file to be uploaded to GitHub.
+
 
 
