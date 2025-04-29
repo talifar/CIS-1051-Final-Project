@@ -1,9 +1,11 @@
 # CIS-1051-Final-Project
 **Title:** Mapping Heart Disease Mortality and Income Disparities in the U.S.
+
 **Author:** Talha Farooq
+
 **Year/Major:** Senior Biology Major at Temple University
 
-**Overview**
+**Overview**:
 This project explores how median household income relates to heart disease mortality rates across U.S. states.
 I combined public datasets from the U.S. Census Bureau and CDC WONDER and created visualizations to highlight patterns and relationships between income levels and health outcomes.
 The full project was completed using R, Quarto, tidycensus, dplyr, and ggplot2.
