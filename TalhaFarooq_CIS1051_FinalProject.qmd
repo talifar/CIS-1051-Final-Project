@@ -1,0 +1,249 @@
+---
+title: "Mapping Heart Disease Mortality and Income Disparities in the U.S."
+author: "Talha Farooq"
+date: "`r Sys.Date()`"
+format: 
+  html:
+    toc: true
+    number-sections: true
+editor: visual
+---
+
+```{r load-packages, echo=FALSE, message=FALSE, warning=FALSE}
+# Load required packages
+library(tidycensus)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(readxl)
+```
+
+```{r load-income, echo=FALSE, message=FALSE, warning=FALSE}
+# Get median household income by state from ACS 5-year estimates (2022)
+income_data <- get_acs(
+  geography = "state",
+  variables = "B19013_001",  # Median household income
+  year = 2022,
+  survey = "acs5"
+)
+```
+
+```{r clean-income, echo=FALSE}
+income_clean <- income_data %>%
+  select(state = NAME, income = estimate)
+```
+
+```{r load-clean-mortality, echo=FALSE, message=FALSE, warning=FALSE}
+# Read all the lines from the file
+lines <- readLines("mortality_data.csv")
+lines <- lines[-1]  # Drop the metadata/header line at the top
+
+# Remove outer quotes and split the rest by tabs
+cleaned_lines <- gsub('^"|"$', '', lines)  # Remove surrounding quotes
+split_lines <- strsplit(cleaned_lines, '\t')
+
+# Only keep rows that actually have all 6 expected values
+split_lines <- split_lines[sapply(split_lines, function(x) length(x) == 6)]
+
+# Turn the result into a data frame
+mortality_df <- as.data.frame(do.call(rbind, split_lines), stringsAsFactors = FALSE)
+
+# Keep just columns 2 to 6 (State through Crude Rate)
+mortality_df <- mortality_df[, 2:6]
+
+# Rename columns so they’re shorter and easier to use
+colnames(mortality_df) <- c("State", "State_Code", "Deaths", "Population", "Crude_Rate")
+
+# Clean quotes from text and convert numbers to numeric
+mortality_df <- mortality_df %>%
+  mutate(
+    State = gsub('"', '', State),
+    State_Code = gsub('"', '', State_Code),
+    Deaths = as.numeric(Deaths),
+    Population = as.numeric(Population),
+    Crude_Rate = as.numeric(Crude_Rate)
+  )
+
+# Final cleaned version with just what’s needed for merging
+mortality_clean <- mortality_df %>%
+  select(state = State, mortality_rate = Crude_Rate)
+```
+
+```{r join-datasets, echo=FALSE}
+# Merge cleaned income and mortality data
+merged_data <- left_join(income_clean, mortality_clean, by = "state")
+```
+
+# Aim
+
+Heart disease is the leading cause of death in the U.S., but the rates aren't equal across all states. Income is one possible factor that could help explain these differences. This project will explore how average income levels in each state relate to heart disease mortality rates. I’ll use public data from the U.S. Census and CDC, clean and combine the datasets in R, and create visualizations to examine any patterns.
+
+# Question
+
+Do states with lower income levels tend to have higher heart disease mortality?
+
+# Scope and System
+
+The analysis focuses on U.S. states. It looks at income (a socioeconomic factor) and heart disease mortality (a health outcome) and whether there's a connection between them. The system includes state-level data, and the unit of analysis is the state.
+
+# Methods
+
+Data on state-level median household income for 2022 were collected using the `tidycensus` R package from the U.S. Census Bureau's American Community Survey (ACS) 5-Year Estimates. Data on heart disease mortality rates for 2020 were downloaded from the CDC WONDER Underlying Cause of Death database. Both datasets were cleaned and formatted to ensure that state names matched correctly for joining. The two datasets were merged by state. To explore patterns between income and mortality, several visualizations were created: maps showing the geographic distribution of each variable, histograms showing the spread of values, and a scatterplot examining the relationship between income and mortality. Figures were made using ggplot2 and organized in Quarto.
+
+# Results
+
+## Map of Median Household Income (2022)
+
+Median income varied across states, with northeastern states and California showing higher incomes. Southern states generally had lower incomes.
+
+```{r map-income, echo=FALSE, message=FALSE, warning=FALSE}
+# Load the US states shapefile from tidycensus
+states_map <- map_data("state")
+
+# Prepare merged data for mapping
+merged_data_map <- merged_data %>%
+  mutate(state = tolower(state))
+
+# Join map shapes with merged data
+map_income <- left_join(states_map, merged_data_map, by = c("region" = "state"))
+
+# Plot the income map
+ggplot(map_income, aes(x = long, y = lat, group = group, fill = income)) +
+  geom_polygon(color = "white") +
+  scale_fill_viridis_c(
+    option = "plasma",
+    na.value = "grey90",
+    name = "Median Income ($)",
+    labels = scales::comma
+  ) +
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),   # Remove "long" and "lat" axis labels
+    axis.text = element_blank(),    # Remove axis tick numbers
+    axis.ticks = element_blank()    # Remove axis ticks
+  ) +
+  labs(
+    title = "Median Household Income by State (2022)",
+    caption = "Data Source: U.S. Census Bureau (2022 Income)"
+  )
+```
+
+## Map of Heart Disease Mortality Rate (2020)
+
+Heart disease death rates were higher in the southeastern U.S., while states in the West and Northeast had lower rates.
+
+```{r map-mortality, echo=FALSE, message=FALSE, warning=FALSE}
+# Prepare merged data for mapping heart disease mortality
+merged_data_map_mortality <- merged_data %>%
+  mutate(state = tolower(state))
+
+# Join map shapes with merged mortality data
+map_mortality <- left_join(states_map, merged_data_map_mortality, by = c("region" = "state"))
+
+# Plot heart disease mortality rate across states
+ggplot(map_mortality, aes(x = long, y = lat, group = group, fill = mortality_rate)) +
+  geom_polygon(color = "white") +
+  scale_fill_viridis_c(
+    option = "plasma",
+    na.value = "grey90",
+    name = "Deaths per 100,000",
+    breaks = seq(150, 300, by = 50),
+    limits = c(140, 300)
+  ) +
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  labs(
+    title = "Heart Disease Mortality Rate by State (2020)",
+    caption = "Data Source: CDC WONDER (2020 Mortality)"
+  )
+```
+
+## Histogram of Income
+
+The income distribution was somewhat right-skewed, with most states clustering between \$50,000 and \$80,000.
+
+```{r histogram-income, echo=FALSE, message=FALSE, warning=FALSE}
+# Histogram showing the distribution of income estimates
+
+ggplot(merged_data, aes(x = income)) +
+  geom_histogram(binwidth = 5000, fill = "steelblue", color = "white", boundary = 0) +
+  theme_minimal() +
+  theme(
+    plot.caption = element_text(hjust = 0.5)
+  ) +
+  scale_x_continuous(labels = scales::label_comma()) +
+  scale_y_continuous(breaks = seq(0, 10, by = 2)) +
+  labs(
+    title = "Distribution of Median Household Income by State (2022)",
+    x = "Median Household Income (USD)",
+    y = "Number of States",
+    caption = "Each bar represents the number of states within a $5,000 income range. \nData Source: U.S. Census Bureau (2022 Income)"
+  )
+```
+
+## Histogram of Heart Disease Mortality
+
+Heart disease mortality rates were also right-skewed, with many states falling between 150 and 250 deaths per 100,000.
+
+```{r histogram-mortality, echo=FALSE, message=FALSE, warning=FALSE}
+# Histogram showing the distribution of heart disease mortality rates
+
+ggplot(merged_data, aes(x = mortality_rate)) +
+  geom_histogram(binwidth = 15, fill = "darkred", color = "white", boundary = 0) +
+  theme_minimal() +
+  theme(
+    plot.caption = element_text(hjust = 0.5)
+  ) +
+  scale_y_continuous(breaks = seq(0, 10, by = 2)) +
+  labs(
+    title = "Distribution of Heart Disease Mortality Rates (2020)",
+    x = "Mortality Rate (Deaths per 100,000)",
+    y = "Number of States",
+    caption = "Each bar represents the number of states within a 15 deaths per 100,000 people range. \nData Source: CDC WONDER (2020 Mortality)"
+  )
+```
+
+## Scatterplot of Income vs. Mortality
+
+There was a negative trend: states with higher median income tended to have lower heart disease mortality rates, although there was some spread.
+
+```{r scatter-income-mortality, echo=FALSE, message=FALSE, warning=FALSE}
+# Scatterplot showing relationship between income and mortality rate
+
+ggplot(merged_data, aes(x = income, y = mortality_rate)) +
+  geom_point(color = "darkgreen", size = 3, alpha = 0.7) +
+  theme_minimal() +
+  theme(
+    plot.caption = element_text(hjust = 0.5)
+  ) +
+  scale_x_continuous(labels = scales::label_comma()) +
+  labs(
+    title = "Relationship Between Median Income and Heart Disease Mortality Rate",
+    x = "Median Household Income (USD)",
+    y = "Heart Disease Mortality Rate (Deaths per 100,000)",
+    caption = "Each point represents a U.S. state. \nData Sources: U.S. Census Bureau (2022 Income), CDC WONDER (2020 Mortality)"
+  )
+```
+
+# Discussion
+
+This project explored the connection between income levels and heart disease mortality across U.S. states. The results showed that higher median household income was generally associated with lower mortality rates, which matches patterns found in previous research. The South, which had lower incomes, also had higher mortality rates. Some outliers existed, but the overall trend was clear. This suggests that socioeconomic status could be a major factor influencing health outcomes. Solving health disparities would likely require broader policies addressing income inequality, healthcare access, and education. Future work could explore how additional variables like healthcare availability or insurance coverage affect mortality rates. While this project focused on data from 2020 and 2022, a longer time trend analysis could provide more insights into whether gaps are widening or shrinking.
+
+# References
+
+Braveman, P., Cubbin, C., Egerter, S., Williams, D. R., & Pamuk, E. (2010). Socioeconomic disparities in health in the United States: What the patterns tell us. *American Journal of Public Health, 100*(S1), S186–S196. https://doi.org/10.2105/AJPH.2009.166082
+
+Centers for Disease Control and Prevention. (2021). Underlying Cause of Death, 1999–2020 [Data set]. Retrieved from https://wonder.cdc.gov/ucd-icd10.html
+
+Kindig, D., & Stoddart, G. (2003). What is population health? *American Journal of Public Health, 93*(3), 380–383. https://doi.org/10.2105/AJPH.93.3.380
+
+Mensah, G. A., & Dunbar, S. B. (2006). A framework for addressing disparities in cardiovascular health. *Journal of Cardiovascular Nursing, 21*(6), 451–456. https://doi.org/10.1097/00005082-200611000-00007
+
+U.S. Census Bureau. (2023). 2022 American Community Survey 5-Year Estimates. Retrieved from https://www.census.gov/programs-surveys/acs
+
